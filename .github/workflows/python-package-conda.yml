@@ -1,46 +1,22 @@
-name: Python Package using Conda
+name: Discord Notifications
 
 on:
   push:
-    branches: [ "main", "dev" ]   # ✅ 여기서 main, dev 브랜치만 실행되게 제한
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
 
 jobs:
-  build-linux:
+  notify:
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 5
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: Add conda to system path
-      run: |
-        echo $CONDA/bin >> $GITHUB_PATH
-    - name: Install dependencies
-      run: |
-        conda env update --file environment.yml --name base
-    - name: Lint with flake8
-      run: |
-        conda install flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        conda install pytest
-        pytest
-
-    # ✅ 빌드/테스트 끝난 뒤 디스코드 알림 단계 추가
-    - name: Send Discord Notification
-      if: always()   # 실패/성공 상관없이 항상 알림
-      uses: Ilshidur/action-discord@master
-      with:
-        webhook: ${{ secrets.DISCODE_WEBHOOK_URL }}
-        args: |
-          📢 **GitHub Actions 알림**
-          Repo: ${{ github.repository }}
-          Branch: ${{ github.ref_name }}
-          Actor: ${{ github.actor }}
-          Status: ${{ job.status }}
+      - name: Discord Webhook Action
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            📢 **GitHub 알림**
+            Repo: ${{ github.repository }}
+            Event: ${{ github.event_name }}
+            Branch: ${{ github.ref_name }}
+            Actor: ${{ github.actor }}

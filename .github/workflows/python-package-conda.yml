@@ -5,23 +5,18 @@ on:
     branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main", "dev" ]
-  issue_comment:
-    types: [created]         # 이슈/PR에 새 댓글 달렸을 때
-  pull_request_review_comment:
-    types: [created]         # 코드리뷰 댓글 달렸을 때
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
       - name: Send Discord Notification
-        uses: Ilshidur/action-discord@0.0.2   # 버전 고정 추천
+        uses: Ilshidur/action-discord@0.0.2   # ✅ 버전 고정
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
           args: |
             📢 **GitHub 알림**
             Repo: ${{ github.repository }}
             Event: ${{ github.event_name }}
-            Branch: ${{ github.ref_name || github.base_ref }}
+            Branch: ${{ github.ref_name }}
             Actor: ${{ github.actor }}
-            Message: ${{ github.event.head_commit.message || github.event.pull_request.title || github.event.comment.body }}

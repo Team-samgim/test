@@ -12,6 +12,7 @@ jobs:
         id: find
         with:
           input-text: ${{ github.event.pull_request.head.ref }}
+          regex: '([A-Z][A-Z0-9]+-\d+)'
       - name: Update PR body
         uses: AsasInnab/pr-body-action@v1
         if: steps.find.outputs.issue != ''

@@ -1,5 +1,3 @@
-## PR Description
- 
 ### #️⃣ 관련 Github 이슈 번호
 
 - close #이슈번호, close #이슈번호

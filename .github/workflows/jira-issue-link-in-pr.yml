@@ -12,10 +12,13 @@ jobs:
         uses: cybervoid/gajira-get-issue@v1.1
         id: find
         with:
-          input-text: ${{ github.head_ref }}
+          input-text: ${{ github.ref_name }}
       - name: Update PR body
         uses: AsasInnab/pr-body-action@v1
         if: steps.find.outputs.issue != ''
         with:
-          body: "[${{ steps.find.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.find.outputs.issue }})\\n${{ github.event.pull_request.body }}"
+          body: |
+            [${{ steps.find.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.find.outputs.issue }})
+      
+            ${{ github.event.pull_request.body }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

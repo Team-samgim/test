@@ -22,7 +22,10 @@ jobs:
         if: steps.extract.outputs.issue != ''
         with:
           body: |
-            [${{ steps.extract.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.extract.outputs.issue }})
+            ## PR Description
+
+            ### 🔗 Jira 이슈
+            - [${{ steps.extract.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.extract.outputs.issue }})
 
             ${{ github.event.pull_request.body }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

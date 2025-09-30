@@ -55,7 +55,9 @@ jobs:
             -H "Content-Type: application/json" \
             "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${PARENT_KEY}")
           
-          ISSUE_TYPE=$(echo $RESPONSE | jq -r '.fields.issuetype.name')
+          echo "API Response: $RESPONSE"
+          
+          ISSUE_TYPE=$(echo "$RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['fields']['issuetype']['name'])")
           echo "parent_issue_type=${ISSUE_TYPE}" >> $GITHUB_OUTPUT
           echo "Parent issue type is: ${ISSUE_TYPE}"
 

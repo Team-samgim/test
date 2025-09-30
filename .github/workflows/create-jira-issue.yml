@@ -30,8 +30,69 @@ jobs:
       - name: Log Issue Parser
         run: |
           echo "parentKey: ${{ steps.issue-parser.outputs.issueparser_parentKey }}"
+          echo "parentIssueType: ${{ steps.issue-parser.outputs.parentIssueType }}"
           echo "ticket number: ${{ steps.issue-parser.outputs.__ticket_number }}"
           echo "json: ${{ steps.issue-parser.outputs.jsonString }}"
+
+      - name: Get Parent Issue Type from Jira
+        id: get-parent-type
+        if: ${{ steps.issue-parser.outputs.issueparser_parentKey != '' }}
+        shell: bash
+        run: |
+          set -x
+          
+          PARENT_KEY="${{ steps.issue-parser.outputs.issueparser_parentKey }}"
+          echo "🔍 Fetching issue type for: $PARENT_KEY"
+          
+          HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET \
+            -H "Authorization: Basic $(echo -n ${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }} | base64)" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${PARENT_KEY}")
+          
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed -n '1,/HTTP_STATUS:/p' | sed '$d')
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          
+          echo "📊 HTTP Status: $HTTP_STATUS"
+          echo "📦 Response Body:"
+          echo "$HTTP_BODY"
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ API call failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          
+          # Python으로 JSON 파싱
+          ISSUE_TYPE=$(echo "$HTTP_BODY" | python3 << 'PYTHON_SCRIPT'
+          import sys
+          import json
+
+          try:
+              data = json.load(sys.stdin)
+              
+              if 'errorMessages' in data or 'errors' in data:
+                  print(f"❌ Jira API Error: {data}", file=sys.stderr)
+                  sys.exit(1)
+              
+              if 'fields' not in data or 'issuetype' not in data['fields']:
+                  print(f"❌ Required fields not found", file=sys.stderr)
+                  sys.exit(1)
+              
+              issue_type = data['fields']['issuetype']['name']
+              print(issue_type)
+              
+          except Exception as e:
+              print(f"❌ Error: {e}", file=sys.stderr)
+              sys.exit(1)
+          PYTHON_SCRIPT
+          )
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to parse issue type"
+            exit 1
+          fi
+          
+          echo "parent_issue_type=${ISSUE_TYPE}" >> $GITHUB_OUTPUT
+          echo "✅ Parent issue type is: ${ISSUE_TYPE}"
 
       - name: Convert markdown to Jira Syntax
         uses: peter-evans/jira2md@v1
@@ -43,23 +104,6 @@ jobs:
 
             ${{ github.event.issue.body }}
           mode: md2jira
-
-      - name: Get Parent Issue Type
-        id: get-parent-type
-        if: ${{ steps.issue-parser.outputs.issueparser_parentKey != '' }}
-        run: |
-          PARENT_KEY="${{ steps.issue-parser.outputs.issueparser_parentKey }}"
-          
-          RESPONSE=$(curl -s -X GET \
-            -H "Authorization: Basic $(echo -n ${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }} | base64)" \
-            -H "Content-Type: application/json" \
-            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${PARENT_KEY}")
-          
-          echo "API Response: $RESPONSE"
-          
-          ISSUE_TYPE=$(echo "$RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['fields']['issuetype']['name'])")
-          echo "parent_issue_type=${ISSUE_TYPE}" >> $GITHUB_OUTPUT
-          echo "Parent issue type is: ${ISSUE_TYPE}"
 
       - name: Create Task under Epic
         id: create-epic

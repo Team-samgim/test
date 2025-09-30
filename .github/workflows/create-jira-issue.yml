@@ -44,6 +44,7 @@ jobs:
           mode: md2jira
 
       - name: Create Task under Epic
+        id: create-epic
         if: ${{ steps.issue-parser.outputs.parentIssueType == 'Epic' }}
         uses: atlassian/gajira-create@v3
         with:
@@ -57,6 +58,7 @@ jobs:
             }
       
       - name: Create Sub-task under Task
+        id: create-subtask
         if: ${{ steps.issue-parser.outputs.parentIssueType == 'Task' }}
         uses: atlassian/gajira-create@v3
         with:
@@ -71,7 +73,6 @@ jobs:
               }
             }
 
-
       - name: Log created issue
         run: echo "Jira Issue ${{ steps.issue-parser.outputs.parentKey }}/${{ steps.create.outputs.issue }} was created"
 
@@ -82,8 +83,8 @@ jobs:
 
       - name: Create branch with Ticket number
         run: |
-          ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
-          ISSUE_TITLE="${{ steps.issue-parser.outputs.issueparser_branch}}"
+          ISSUE_NUMBER="${{ steps.create-epic.outputs.issue || steps.create-subtask.outputs.issue }}"
+          ISSUE_TITLE="${{ steps.issue-parser.outputs.issueparser_branch }}"
           BRANCH_NAME="${ISSUE_NUMBER}-$(echo ${ISSUE_TITLE} | sed 's/ /-/g')"
           git checkout -b "${BRANCH_NAME}"
           git push origin "${BRANCH_NAME}"

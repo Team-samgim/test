@@ -43,8 +43,8 @@ jobs:
             ${{ github.event.issue.body }}
           mode: md2jira
 
-      - name: Create Issue
-        id: create
+      - name: Create Task under Epic
+        if: ${{ steps.issue-parser.outputs.parentIssueType == 'Epic' }}
         uses: atlassian/gajira-create@v3
         with:
           project: SGK
@@ -53,10 +53,24 @@ jobs:
           description: '${{ steps.md2jira.outputs.output-text }}'
           fields: |
             {
+              "customfield_10014": "${{ steps.issue-parser.outputs.issueparser_parentKey }}"
+            }
+      
+      - name: Create Sub-task under Task
+        if: ${{ steps.issue-parser.outputs.parentIssueType == 'Task' }}
+        uses: atlassian/gajira-create@v3
+        with:
+          project: SGK
+          issuetype: Sub-task
+          summary: '${{ github.event.issue.title }}'
+          description: '${{ steps.md2jira.outputs.output-text }}'
+          fields: |
+            {
               "parent": {
                 "key": "${{ steps.issue-parser.outputs.issueparser_parentKey }}"
               }
             }
+
 
       - name: Log created issue
         run: echo "Jira Issue ${{ steps.issue-parser.outputs.parentKey }}/${{ steps.create.outputs.issue }} was created"

@@ -30,7 +30,6 @@ jobs:
       - name: Log Issue Parser
         run: |
           echo "parentKey: ${{ steps.issue-parser.outputs.issueparser_parentKey }}"
-          echo "parentIssueType: ${{ steps.issue-parser.outputs.parentIssueType }}"
           echo "ticket number: ${{ steps.issue-parser.outputs.__ticket_number }}"
           echo "json: ${{ steps.issue-parser.outputs.jsonString }}"
 
@@ -45,9 +44,24 @@ jobs:
             ${{ github.event.issue.body }}
           mode: md2jira
 
+      - name: Get Parent Issue Type
+        id: get-parent-type
+        if: ${{ steps.issue-parser.outputs.issueparser_parentKey != '' }}
+        run: |
+          PARENT_KEY="${{ steps.issue-parser.outputs.issueparser_parentKey }}"
+          
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Basic $(echo -n ${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }} | base64)" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${PARENT_KEY}")
+          
+          ISSUE_TYPE=$(echo $RESPONSE | jq -r '.fields.issuetype.name')
+          echo "parent_issue_type=${ISSUE_TYPE}" >> $GITHUB_OUTPUT
+          echo "Parent issue type is: ${ISSUE_TYPE}"
+
       - name: Create Task under Epic
         id: create-epic
-        if: ${{ steps.issue-parser.outputs.parentIssueType == 'Epic' }}
+        if: ${{ steps.get-parent-type.outputs.parent_issue_type == 'Epic' }}
         uses: atlassian/gajira-create@v3
         with:
           project: SGK
@@ -61,7 +75,7 @@ jobs:
 
       - name: Create Sub-task under Task
         id: create-subtask
-        if: ${{ steps.issue-parser.outputs.parentIssueType == 'Task' }}
+        if: ${{ steps.get-parent-type.outputs.parent_issue_type == 'Task' }}
         uses: atlassian/gajira-create@v3
         with:
           project: SGK

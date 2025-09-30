@@ -43,7 +43,7 @@ jobs:
         continue-on-error: true
         with:
           project: SGK
-          issuetype: Sub-task
+          issuetype: 하위 작업
           summary: '${{ github.event.issue.title }}'
           description: '${{ steps.md2jira.outputs.output-text }}'
           fields: |
